@@ -66,3 +66,28 @@
   (match (map-get? messages parent-id)
     parent (get reply-depth parent)
     u0))
+
+
+;; Public function to initialize the contract
+(define-public (initialize)
+  (begin
+    (asserts! (is-contract-owner) err-owner-only)
+    (asserts! (not (is-initialized)) err-already-initialized)
+    (var-set initialized true)
+    (ok true)))
+
+;; Public function to send an anonymous message
+(define-public (send-anonymous-message (content (string-utf8 500)))
+  (let ((message-id (var-get message-counter)))
+    (asserts! (is-initialized) err-not-initialized)
+    (map-set messages message-id {sender: none, content: content, timestamp: block-height, category: none, reply-to: none, reply-depth: u0, encrypted: false})
+    (var-set message-counter (+ message-id u1))
+    (ok message-id)))
+
+;; Public function to retrieve a message by ID
+(define-read-only (get-message (message-id uint))
+  (map-get? messages message-id))
+
+;; Public function to get the total number of messages
+(define-read-only (get-message-count)
+  (var-get message-counter))
