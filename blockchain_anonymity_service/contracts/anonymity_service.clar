@@ -168,3 +168,31 @@
       (increment-user-count tx-sender)
       (var-set message-counter (+ message-id u1))
       (ok message-id))))
+
+;; Admin functions
+(define-public (update-service-fee (new-fee uint))
+  (begin
+    (asserts! (is-contract-owner) err-owner-only)
+    (var-set service-fee new-fee)
+    (ok true)))
+
+(define-public (update-rate-limits 
+    (new-window uint) 
+    (new-max-messages uint))
+  (begin
+    (asserts! (is-contract-owner) err-owner-only)
+    (var-set rate-limit-window new-window)
+    (var-set max-messages-per-window new-max-messages)
+    (ok true)))
+
+(define-read-only (get-message-replies (message-id uint))
+  (map-get? message-replies message-id))
+
+(define-read-only (get-user-message-count (user principal))
+  (let ((current-window (/ block-height (var-get rate-limit-window))))
+    (default-to u0 
+      (map-get? user-message-count 
+                {user: user, window: current-window}))))
+
+(define-read-only (get-service-fee)
+  (var-get service-fee))
