@@ -41,3 +41,28 @@
 (define-map user-message-count {user: principal, window: uint} uint)
 (define-map categories (string-utf8 50) bool)
 (define-map message-replies uint (list 20 uint))
+
+;; Private function to check if the contract is initialized
+(define-private (is-initialized)
+  (var-get initialized))
+
+;; Private function to check if the caller is the contract owner
+(define-private (is-contract-owner)
+  (is-eq tx-sender contract-owner))
+
+(define-private (check-rate-limit (user principal))
+  (let ((current-window (/ block-height (var-get rate-limit-window)))
+        (current-count (default-to u0 (map-get? user-message-count {user: user, window: current-window}))))
+    (< current-count (var-get max-messages-per-window))))
+
+(define-private (increment-user-count (user principal))
+  (let ((current-window (/ block-height (var-get rate-limit-window)))
+        (current-count (default-to u0 (map-get? user-message-count {user: user, window: current-window}))))
+    (map-set user-message-count 
+             {user: user, window: current-window}
+             (+ current-count u1))))
+
+(define-private (get-parent-depth (parent-id uint))
+  (match (map-get? messages parent-id)
+    parent (get reply-depth parent)
+    u0))
