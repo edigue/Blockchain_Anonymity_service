@@ -105,3 +105,19 @@
     (asserts! (is-contract-owner) err-owner-only)
     (var-set initialized true)
     (ok true)))
+
+(define-read-only (is-valid-content (content (string-utf8 500)))
+  (let ((content-length (len content)))
+    (and (>= content-length min-message-length)
+         (< content-length u500))))
+
+(define-read-only (does-message-exist (message-id uint))
+  (match (map-get? messages message-id)
+    message true
+    false))
+
+(define-read-only (get-messages-count (start uint) (end uint))
+  (if (and (<= start end) 
+           (< end (var-get message-counter)))
+      (ok (- end start))
+      (err err-invalid-message-count)))
