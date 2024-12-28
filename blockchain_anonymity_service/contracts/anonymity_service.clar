@@ -196,3 +196,38 @@
 
 (define-read-only (get-service-fee)
   (var-get service-fee))
+
+
+(define-read-only (get-message-depth (message-id uint))
+  (match (map-get? messages message-id)
+    message (get reply-depth message)
+    u0))
+
+(define-public (reply-to-message 
+    (content (string-utf8 500))
+    (parent-id uint)
+    (encrypted bool))
+  (begin
+    (asserts! (is-initialized) err-not-initialized)
+    (asserts! (check-rate-limit tx-sender) err-rate-limit-exceeded)
+    (asserts! (does-message-exist parent-id) err-message-not-found)
+    (let ((parent-depth (get-parent-depth parent-id))
+          (new-depth (+ parent-depth u1)))
+      (asserts! (< new-depth max-reply-depth) err-invalid-reply-depth)
+      (let ((message-id (var-get message-counter)))
+        (map-set messages message-id 
+                 {sender: none,
+                  content: content,
+                  timestamp: block-height,
+                  category: none,
+                  reply-to: (some parent-id),
+                  reply-depth: new-depth,  ;; Store the calculated depth
+                  encrypted: encrypted})
+        (map-set message-replies parent-id 
+                 (unwrap-panic (as-max-len? 
+                   (append (default-to (list) (map-get? message-replies parent-id)) 
+                           message-id) 
+                   u20)))
+        (increment-user-count tx-sender)
+        (var-set message-counter (+ message-id u1))
+        (ok message-id)))))
